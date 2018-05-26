@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/acomagu/joro/decoder"
+	"github.com/acomagu/go-ufml"
 )
 
 func main() {
@@ -28,9 +28,7 @@ func main() {
 		}
 
 	case joroFormat:
-		var err error
-		dat, err = decoder.NewDecoder(os.Stdin).Decode()
-		if err != nil {
+		if err := ufml.NewDecoder(os.Stdin).Decode(&dat); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			fmt.Fprintln(os.Stderr, "\nhint: table format cannot be unjoro.")
 			os.Exit(1)
@@ -51,24 +49,26 @@ func main() {
 		var rows [][]string
 		if p.isTable {
 			rows = toTableRows(dat)
-		} else {
-			rows = toRows(dat)
-		}
 
-		sw := toStrWithWidth(rows, p.isTable)
-		for _, row := range sw {
-			for ic, col := range row {
-				s := col.s
-				if p.hasPadding {
-					s = putMargin(s, col.w)
-				}
+			sw := toStrWithWidthTable(rows)
+			for _, row := range sw {
+				for ic, col := range row {
+					s := col.s
+					if p.hasPadding {
+						s = putMargin(s, col.w)
+					}
 
-				if ic > 0 {
-					fmt.Print(" ")  // delimiter
+					if ic > 0 {
+						fmt.Print(" ") // delimiter
+					}
+					fmt.Print(s)
 				}
-				fmt.Print(s)
+				fmt.Println()
 			}
-			fmt.Println()
+		} else {
+			if err := ufml.NewEncoder(os.Stdout).Encode(dat); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
 		}
 
 	default:
@@ -147,14 +147,6 @@ func parseFlags(args []string) (*params, error) {
 type strWithWidth struct {
 	s string
 	w int
-}
-
-func toStrWithWidth(rows [][]string, isTable bool) [][]strWithWidth {
-	if isTable {
-		return toStrWithWidthTable(rows)
-	}
-
-	return toStrWithWidthNotTable(rows)
 }
 
 func toStrWithWidthTable(rows [][]string) [][]strWithWidth {
