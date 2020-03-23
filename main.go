@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/acomagu/go-ufml"
 )
@@ -59,7 +60,7 @@ func main() {
 					}
 
 					if ic > 0 {
-						fmt.Print(" ") // delimiter
+						fmt.Printf("%c", p.delimiter) // delimiter
 					}
 					fmt.Print(s)
 				}
@@ -89,10 +90,12 @@ type params struct {
 	output     format
 	isTable    bool
 	hasPadding bool
+	delimiter  rune
 }
 
 func parseFlags(args []string) (*params, error) {
 	var isTable, unjoro, noPadding, padding, fromJoro, fromJSON bool
+	var delimiterStr string
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	fs.BoolVar(&isTable, "table", false, "convert to table format")
 	fs.BoolVar(&isTable, "t", false, "convert to table format (shorthand)")
@@ -103,6 +106,7 @@ func parseFlags(args []string) (*params, error) {
 	fs.BoolVar(&fromJoro, "from-joro", false, "parse input as Joro rows instead of JSON")
 	fs.BoolVar(&fromJoro, "j", false, "parse input as Joro rows instead of JSON (shorthand)")
 	fs.BoolVar(&fromJSON, "from-json", false, "parse input as JSON (default)")
+	fs.StringVar(&delimiterStr, "d", " ", "delimiter")
 
 	fs.Parse(args)
 	for fs.NArg() > 0 {
@@ -139,6 +143,14 @@ func parseFlags(args []string) (*params, error) {
 		}
 
 		p.isTable = isTable
+
+		if utf8.RuneCountInString(delimiterStr) != 1 {
+			return nil, fmt.Errorf("the delimiter is not one character")
+		}
+		p.delimiter, _ = utf8.DecodeRuneInString(delimiterStr)
+		if p.delimiter == utf8.RuneError {
+			return nil, fmt.Errorf("invalid string")
+		}
 	}
 
 	return p, nil
